@@ -239,7 +239,7 @@ nextvisible(Client *c) {
 }
 
 static Client*
-nextbytag(Client *c, int tag){
+nextbytag(Client *c, int tag) {
 	for (; c && !c->tags[tag]; c = c->next);
 	return c;
 }
@@ -253,7 +253,7 @@ isoccupied(unsigned int t) {
 }
 
 static void
-reorder(int tag){
+reorder(int tag) {
 	Client *c;
 	uint8_t order = 0;
 	if (tag < 0)
@@ -279,7 +279,7 @@ drawbar() {
 	curs_set(0);
 	attrset(BAR_ATTR);
 	move(bar.y, 0);
-	for (int i = 0; i < countof(tags); i++){
+	for (int i = 0; i < countof(tags); i++) {
 		if (seltags[i])
 			attrset(TAG_SEL);
 		else if (isoccupied(i))
@@ -366,7 +366,7 @@ static void
 draw_all(bool border) {
 	Client *c;
 	curs_set(0);
-	if (!nextvisible(clients)){
+	if (!nextvisible(clients)) {
 		sel = NULL;
 		clear_workspace();
 		doupdate();
@@ -454,7 +454,7 @@ detachstack(Client *c) {
 }
 
 static void
-focus(Client *c){
+focus(Client *c) {
 	Client *tmp = sel;
 	if (!c)
 		for (c = stack; c && !isvisible(c); c = c->snext);
@@ -685,7 +685,7 @@ idxoftag(const char *tag) {
 }
 
 static void
-tagschanged(){
+tagschanged() {
 	Client *c;
 	bool nm = false;
 	for (c = nextvisible(clients); c; c = nextvisible(c->next)) {
@@ -977,7 +977,7 @@ focusprevnm(const char *args[]) {
 	c = sel;
 	do {
 		for (c = c->prev; c && !isvisible(c); c = c->prev);
-		if (!c){
+		if (!c) {
 			for (c = clients; c && c->next; c = c->next);
 			for (; c && !isvisible(c); c = c->prev);
 		}
@@ -1114,7 +1114,7 @@ togglebell(const char *args[]) {
 }
 
 static void
-toggleminimize(const char *args[]){
+toggleminimize(const char *args[]) {
 	Client *c, *m, *t;
 	unsigned int n;
 	if (!sel)
@@ -1122,7 +1122,7 @@ toggleminimize(const char *args[]){
 	/* the last window can't be minimized */
 	if (!sel->minimized) {
 		for (n = 0, c = nextvisible(clients); c; c = nextvisible(c->next))
-			if(!c->minimized)
+			if (!c->minimized)
 				n++;
 		if (n == 1)
 			return;
