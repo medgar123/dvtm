@@ -220,8 +220,7 @@ isarrange(void (*func)()) {
 
 static void
 clear_workspace() {
-	for (unsigned int y = 0; y < wah; y++)
-		mvhline(way + y, 0, ' ', waw);
+	erase();
 	wnoutrefresh(stdscr);
 }
 
@@ -251,7 +250,7 @@ drawbar() {
 	attrset(NORMAL_ATTR);
 	if (sel)
 		curs_set(vt_cursor(sel->term));
-	refresh();
+	wnoutrefresh(stdscr);
 }
 
 static void
@@ -295,7 +294,7 @@ static void
 draw(Client *c) {
 	draw_content(c);
 	draw_border(c);
-	wrefresh(c->window);
+	wnoutrefresh(c->window);
 }
 
 static void
@@ -315,12 +314,11 @@ draw_all(bool border) {
 	 * this has the effect that the cursor position is
 	 * accurate
 	 */
-	refresh();
 	if (sel) {
 		draw_content(sel);
 		if (border)
 			draw_border(sel);
-		wrefresh(sel->window);
+		wnoutrefresh(sel->window);
 	}
 }
 
@@ -395,12 +393,12 @@ focus(Client *c) {
 	settitle(c);
 	if (tmp) {
 		draw_border(tmp);
-		wrefresh(tmp->window);
+		wnoutrefresh(tmp->window);
 	}
 	if (isarrange(fullscreen))
 		redrawwin(c->window);
 	draw_border(c);
-	wrefresh(c->window);
+	wnoutrefresh(c->window);
 }
 
 static void
@@ -568,8 +566,6 @@ resize_screen() {
 
 	resizeterm(screen.h, screen.w);
 	wresize(stdscr, screen.h, screen.w);
-	wrefresh(curscr);
-	refresh();
 
 	waw = screen.w;
 	wah = screen.h;
@@ -676,7 +672,7 @@ destroy(Client *c) {
 			sel = NULL;
 	}
 	werase(c->window);
-	wrefresh(c->window);
+	wnoutrefresh(c->window);
 	vt_destroy(c->term);
 	delwin(c->window);
 	if (!clients && countof(actions)) {
@@ -912,9 +908,8 @@ static void
 redraw(const char *args[]) {
 	for (Client *c = clients; c; c = c->next)
 		vt_dirty(c->term);
-	wrefresh(curscr);
 	resize_screen();
-	draw_all(true);
+	wrefresh(curscr);
 }
 
 static void
@@ -982,8 +977,8 @@ togglebar(const char *args[]) {
 	else
 		bar.pos = BAR_OFF;
 	updatebarpos();
-	arrange();
 	drawbar();
+	arrange();
 }
 
 static void
@@ -1378,6 +1373,7 @@ main(int argc, char *argv[]) {
 			nfds = max(nfds, c->pty);
 			c = c->next;
 		}
+		doupdate();
 		r = select(nfds + 1, &rd, NULL, NULL, NULL);
 
 		if (r == -1 && errno == EINTR)
@@ -1444,7 +1440,6 @@ main(int argc, char *argv[]) {
 			draw_content(sel);
 			wnoutrefresh(sel->window);
 		}
-		doupdate();
 	}
 
 	cleanup();
