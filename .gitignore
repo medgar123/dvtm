@@ -12,3 +12,8 @@ tags
 /log
 /debug
 /patches
+/config.h
+/PKGBUILD
+/UTF-8-demo.txt
+/*.xz
+/pkg/
