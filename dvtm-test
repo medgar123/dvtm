@@ -34,7 +34,7 @@ test_copymode() { # requires wget, diff, vi
 	dvtm_input '^kvGk$'
 	dvtm_input 'y'
 	rm -f "$FILENAME.copy"
-	sh_cmd "vi $FILENAME.copy"
+	sh_cmd "vi -s $FILENAME.copy"
 	dvtm_input 'i'
 	dvtm_cmd 'p'
 	dvtm_input "${ESC}dd:wq\n"
