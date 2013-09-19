@@ -711,16 +711,48 @@ static void interpret_csi_decstbm(Vt *t, int param[], int pcount)
 	b->curs_col = 0;
 }
 
+static void interpret_csi_modes(Vt *t, int param[], int pcount, bool private, bool set) {
+	for (int i = 0; i < pcount; i++) {
+		if (!private) {
+			switch (param[i]) {
+			case 4: /* insert/replace mode */
+				t->insert = set;
+				break;
+			}
+		} else {
+			switch (param[i]) {
+			case 1: /* set application/normal cursor key mode (DECCKM) */
+				t->curskeymode = set;
+				break;
+			case 6: /* set origin to relative/absolute (DECOM) */
+				t->relposmode = set;
+				break;
+			case 25: /* make cursor visible/invisible (DECCM) */
+				t->curshid = !set;
+				break;
+			case 47: /* use alternate/normal screen buffer */
+				vt_copymode_leave(t);
+				t->buffer = set ? &t->buffer_alternate : &t->buffer_normal;
+				vt_dirty(t);
+				break;
+			case 1000: /* enable/disable normal mouse tracking */
+				t->mousetrack = set;
+				break;
+			}
+		}
+	}
+}
+
 static void interpret_csi(Vt *t)
 {
 	static int csiparam[BUFSIZ];
 	Buffer *b = t->buffer;
 	int param_count = 0;
-	const char *p = t->ebuf + 1;
 	char verb = t->ebuf[t->elen - 1];
+	bool private = t->ebuf[1] == '?';
 
 	/* parse numeric parameters */
-	for (p += (t->ebuf[1] == '?'); *p; p++) {
+	for (const char *p = t->ebuf + 1 + private; *p; p++) {
 		if (IS_CONTROL(*p)) {
 			process_nonprinting(t, *p);
 		} else if (*p == ';') {
@@ -735,59 +767,11 @@ static void interpret_csi(Vt *t)
 		}
 	}
 
-	if (t->ebuf[1] == '?') {
-		if (verb == 'h') { /* DEC Private Mode Set (DECSET) */
-			switch (csiparam[0]) {
-			case 1: /* set ANSI cursor (application) key mode (DECCKM) */
-				t->curskeymode = true;
-				break;
-			case 6: /* set origin to relative (DECOM) */
-				t->relposmode = true;
-				break;
-			case 25: /* make cursor visible (DECCM) */
-				t->curshid = false;
-				break;
-			case 47: /* use alternate screen buffer */
-				vt_copymode_leave(t);
-				t->buffer = &t->buffer_alternate;
-				vt_dirty(t);
-				break;
-			case 1000: /* enable normal mouse tracking */
-				t->mousetrack = true;
-				break;
-			}
-		} else if (verb == 'l') { /* DEC Private Mode Reset (DECRST) */
-			switch (csiparam[0]) {
-			case 1: /* reset ANSI cursor (normal) key mode (DECCKM) */
-				t->curskeymode = false;
-				break;
-			case 6: /* set origin to absolute (DECOM) */
-				t->relposmode = false;
-				break;
-			case 25: /* make cursor visible (DECCM) */
-				t->curshid = true;
-				break;
-			case 47: /* use normal screen buffer */
-				vt_copymode_leave(t);
-				t->buffer = &t->buffer_normal;
-				vt_dirty(t);
-				break;
-			case 1000: /* disable normal mouse tracking */
-				t->mousetrack = false;
-				break;
-			}
-		}
-	}
-
 	/* delegate handling depending on command character (verb) */
 	switch (verb) {
-	case 'h':
-		if (param_count == 1 && csiparam[0] == 4) /* insert mode */
-			t->insert = true;
-		break;
+	case 'h': /* (private) set/reset mode */
 	case 'l':
-		if (param_count == 1 && csiparam[0] == 4) /* replace mode */
-			t->insert = false;
+		interpret_csi_modes(t, csiparam, param_count, private, verb == 'h');
 		break;
 	case 'm': /* it's a 'set attribute' sequence */
 		interpret_csi_sgr(t, csiparam, param_count);
@@ -850,10 +834,12 @@ static void interpret_csi(Vt *t)
 			break;
 		}
 	case 'r': /* set scrolling region */
-		interpret_csi_decstbm(t, csiparam, param_count);
+		if (!private)
+			interpret_csi_decstbm(t, csiparam, param_count);
 		break;
 	case 's': /* save cursor location */
-		save_curs(t);
+		if (!private)
+			save_curs(t);
 		break;
 	case 'u': /* restore cursor location */
 		restore_curs(t);
