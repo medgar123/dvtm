@@ -256,11 +256,12 @@ drawbar() {
 static void
 draw_border(Client *c) {
 	char t = '\0';
-	int maxlen;
+	int x, y, maxlen;
 
-	attrset((sel == c || (runinall && !c->minimized)) ? SELECTED_ATTR : NORMAL_ATTR);
+	wattrset(c->window, (sel == c || (runinall && !c->minimized)) ? SELECTED_ATTR : NORMAL_ATTR);
+	getyx(c->window, y, x);
 	curs_set(0);
-	mvhline(c->y, c->x, ACS_HLINE, c->w);
+	mvwhline(c->window, 0, 0, ACS_HLINE, c->w);
 	maxlen = c->w - (2 + sstrlen(TITLE) - sstrlen("%s%sd")  + sstrlen(SEPARATOR) + 2);
 	if (maxlen < 0)
 		maxlen = 0;
@@ -269,21 +270,21 @@ draw_border(Client *c) {
 		c->title[maxlen] = '\0';
 	}
 
-	mvprintw(c->y, c->x + 2, TITLE,
-	         *c->title ? c->title : "",
-	         *c->title ? SEPARATOR : "",
-	         c->order);
+	mvwprintw(c->window, 0, 2, TITLE,
+	          *c->title ? c->title : "",
+	          *c->title ? SEPARATOR : "",
+	          c->order);
 	if (t)
 		c->title[maxlen] = t;
+	wmove(c->window, y, x);
 	if (!c->minimized)
 		curs_set(vt_cursor(c->term));
-	wnoutrefresh(stdscr);
 }
 
 static void
 draw_content(Client *c) {
 	if (!c->minimized || isarrange(fullscreen)) {
-		vt_draw(c->term, c->window, 0, 0);
+		vt_draw(c->term, c->window, 1, 0);
 		if (c != sel)
 			curs_set(0);
 	}
@@ -445,7 +446,7 @@ move_client(Client *c, int x, int y) {
 	if (c->x == x && c->y == y)
 		return;
 	debug("moving, x: %d y: %d\n", x, y);
-	if (mvwin(c->window, y + 1, x) == ERR)
+	if (mvwin(c->window, y, x) == ERR)
 		eprint("error moving, x: %d y: %d\n", x, y);
 	else {
 		c->x = x;
@@ -458,7 +459,7 @@ resize_client(Client *c, int w, int h) {
 	if (c->w == w && c->h == h)
 		return;
 	debug("resizing, w: %d h: %d\n", w, h);
-	if (wresize(c->window, h - 1, w) == ERR)
+	if (wresize(c->window, h, w) == ERR)
 		eprint("error resizing, w: %d h: %d\n", w, h);
 	else {
 		c->w = w;
@@ -726,17 +727,12 @@ create(const char *args[]) {
 		NULL
 	};
 
-	c->w = screen.w;
-	c->h = screen.h;
-	c->x = wax;
-	c->y = way;
-
-	if (!(c->window = newwin(c->h - 1, c->w, c->y + 1, c->x))) {
+	if (!(c->window = newwin(wah, waw, way, wax))) {
 		free(c);
 		return;
 	}
 
-	if (!(c->term = vt_create(c->h - 1, c->w, screen.history))) {
+	if (!(c->term = vt_create(screen.h - 1, screen.w, screen.history))) {
 		delwin(c->window);
 		free(c);
 		return;
@@ -754,6 +750,10 @@ create(const char *args[]) {
 		free(cwd);
 	vt_set_data(c->term, c);
 	vt_set_event_handler(c->term, term_event_handler);
+	c->w = screen.w;
+	c->h = screen.h;
+	c->x = wax;
+	c->y = way;
 	c->order = 0;
 	c->minimized = false;
 	debug("client with pid %d forked\n", c->pid);
