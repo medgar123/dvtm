@@ -661,6 +661,7 @@ setup() {
 
 static void
 destroy(Client *c) {
+	close(c->pty);
 	if (sel == c)
 		focusnextnm(NULL);
 	detach(c);
